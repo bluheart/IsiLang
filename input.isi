@@ -1,0 +1,25 @@
+programa
+
+ declare azul, branco.
+ leia(azul).
+ leia(branco).
+
+ escreva("texto aqui").
+ escreva(azul).
+ escreva(branco).
+
+
+ azul := azul + branco.
+ se (1 < (25 / 5) - 2) entao {
+    escreva("ovo").
+ }
+ senao {
+    escreva("teste").
+ }
+
+ enquanto (3 > 1)
+ faça {
+    escreva("loop").
+ }
+
+fimprog.
