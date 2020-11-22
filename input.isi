@@ -1,6 +1,6 @@
 programa
 
- declare azul, branco.
+ declare azul, branco, verde, amarelo.
  leia(azul).
  leia(branco).
 
@@ -8,6 +8,7 @@ programa
  escreva(azul).
  escreva(branco).
 
+ verde := 23.5.
 
  azul := azul + branco.
  se (1 < (25 / 5) - 2) entao {

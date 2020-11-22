@@ -43,7 +43,7 @@ termo: fator in_fator*;
 
 in_fator: OP_DM fator;
 
-fator: NUM | ID | AP expr FP;
+fator: NUM | TEXTO | ID | AP expr FP;
 
 SE: 'se';
 

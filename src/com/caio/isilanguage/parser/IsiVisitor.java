@@ -16,28 +16,34 @@ import com.caio.isilanguage.parser.IsiLangParser.CmdIfContext;
 
 public class IsiVisitor extends IsiLangBaseVisitor<String> {
 
-	private Map<String, String> vars = new HashMap<String, String>();
 	private Map<String, String> tipos = new HashMap<String, String>();
 	private List<String> naoUsadas = new ArrayList<String>();
 
 	@Override
 	public String visitProg(@NotNull IsiLangParser.ProgContext ctx) {
 		String declara = "";
+		String result = "";
 		if (ctx.declara() != null) {
 			declara = visit(ctx.declara());
 		}
-		return visit(ctx.bloco());
+		result = visit(ctx.bloco());
+		if (!this.naoUsadas.isEmpty()) {
+			System.err.println("Warning! Variaves declaradas e nao atribuidas:");
+			for (String var: this.naoUsadas) {
+				System.err.println(" - " + var);
+			}
+		}
+		return result;
 	}
 	@Override
 	public String visitDeclara(@NotNull IsiLangParser.DeclaraContext ctx) {
 		List<TerminalNode> nodes = ctx.ID();
 		String result = "";
 		for (TerminalNode id: nodes) {
-			if (this.vars.containsKey(id.toString())) {
+			if (this.tipos.containsKey(id.toString())) {
 				throw new ParseCancellationException("Variavel ja declarada: '"
 						+ id.toString() + "' na linha " + ctx.getStart().getLine());
 			}
-			this.vars.put(id.toString(), null);
 			this.tipos.put(id.toString(), null);
 			this.naoUsadas.add(id.toString());
 			result = result + " " + id.toString();
@@ -55,29 +61,54 @@ public class IsiVisitor extends IsiLangBaseVisitor<String> {
 	}
 	@Override
 	public String visitCmdLeitura(@NotNull IsiLangParser.CmdLeituraContext ctx) {
-		if (!this.vars.containsKey(ctx.ID().toString())) {
+		if (!this.tipos.containsKey(ctx.ID().toString())) {
 			throw new ParseCancellationException("Variavel nao declarada: " + ctx.ID().toString());
 		}
-		this.vars.replace(ctx.ID().toString(), "input");
+		if (this.tipos.get(ctx.ID().toString()) == "NUM") {
+			throw new ParseCancellationException("A variavel: " + ctx.ID().toString() +
+					                             " tem tipo: " + this.tipos.get(ctx.ID().toString()));
+		}
 		this.tipos.replace(ctx.ID().toString(), "TEXTO");
-		this.naoUsadas.remove(ctx.ID().toString());
 		return ctx.ID().getText() +" = input()";
 	}
 	@Override
 	public String visitCmdExpr(@NotNull IsiLangParser.CmdExprContext ctx) {
-		if (!this.vars.containsKey(ctx.ID().toString())) {
+		String result = visit(ctx.expr());
+		if (!this.tipos.containsKey(ctx.ID().toString())) {
 			throw new ParseCancellationException("Variavel nao declarada: " + ctx.ID().toString());
 		}
-		return ctx.ID().getText() + " = " + visit(ctx.expr());
+		IsiLangParser.FatorContext fator  = ctx.expr().termo().fator();
+		String tipoFator = null;
+		if (fator.NUM() != null) {
+			tipoFator = "NUM";
+		}
+		else if (fator.TEXTO() != null) {
+			tipoFator = "TEXTO";
+		}
+		else if (fator.ID() != null) {
+			tipoFator = this.tipos.get(fator.ID().toString());
+		}
+		if (this.tipos.get(ctx.ID().toString()) == null) {
+			this.tipos.replace(ctx.ID().toString(), tipoFator);
+			this.naoUsadas.remove(ctx.ID().toString());
+		}
+		else {
+			if (this.tipos.get(ctx.ID().toString()) != tipoFator) {
+				throw new ParseCancellationException("a variavel possui tipo: " + this.tipos.get(ctx.ID().toString()) +
+						                              " e o lado direito tipo: " + tipoFator);
+			}
+		}
+		return ctx.ID().getText() + " = " + result;
 	}
 	@Override
 	public String visitEscreveID(@NotNull IsiLangParser.EscreveIDContext ctx ) {
-		if (!this.vars.containsKey(ctx.ID().toString())) {
+		if (!this.tipos.containsKey(ctx.ID().toString())) {
 			throw new ParseCancellationException("Variavel nao declarada: " + ctx.ID().toString());
 		}
-		if (this.vars.get(ctx.ID().toString()) == null) {
+		if (this.tipos.get(ctx.ID().toString()) == null) {
 			throw new ParseCancellationException("A Variavel "+ ctx.ID().toString() +" nao possui valor atribuido");
 		}
+		this.naoUsadas.remove(ctx.ID().toString());
 		return "print(" + ctx.ID().getText() + ")";
 	}
 	@Override
@@ -137,6 +168,9 @@ public class IsiVisitor extends IsiLangBaseVisitor<String> {
 	public String visitFator(@NotNull IsiLangParser.FatorContext ctx) {
 		if (ctx.expr() != null) {
 			return "(" + visit(ctx.expr()) + ")";
+		}
+		if (ctx.ID() != null) {
+			this.naoUsadas.remove(ctx.ID().toString());
 		}
 		return ctx.getText();
 	}
